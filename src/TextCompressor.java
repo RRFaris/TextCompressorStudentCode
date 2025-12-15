@@ -38,37 +38,89 @@ public class TextCompressor {
         TST tst = new TST();
         String prefix = "";
 
+        // Initialize array with single characters
         for (int i = 0; i < 128; i++) {
             tst.insert("" + (char) i, i);
         }
 
-        int code = 257;
+        // Next available code after EOF
+        int code = 129;
 
         int index = 0;
+        // Main Loop
         while (index < strLength) {
-            System.out.println(prefix);
+            // Get the longest available prefix to maximize storage saving
             prefix = tst.getLongestPrefix(str.substring(index));
 
             BinaryStdOut.write(tst.lookup(prefix), 8);
 
             int prefixLen = prefix.length();
 
-
+            // Make sure index doesn't go out of bounds
             if (index + prefixLen < strLength && code < 256) {
-                String lookAheadCode = prefix + str.charAt(index + prefix.length());
-                tst.insert(lookAheadCode, code++);
+                // Create look ahead code using original prefix and next letter of the text
+                String lookAheadCode = prefix + str.charAt(index + prefixLen);
+                tst.insert(lookAheadCode, code);
+                code++;
             }
-            index += prefix.length();
+            // Updates index
+            index += prefixLen;
+        }
+
+        // Communicates to expand that this is the end of the file
+        BinaryStdOut.write(EOF, 8);
+        BinaryStdOut.close();
+    }
+
+    private static void expand() {
+        String[] map = new String[256];
+        // Next available code after EOF
+        int code = 129;
+
+        // Initialize dictionary with single characters
+        for (int i = 0; i < 128; i++) {
+            map[i] = "" + (char) i;
+        }
+
+        String currentString = "";
+
+        int currentCode = BinaryStdIn.readInt(8);
+
+        String currentStr = map[currentCode];
+        for (int i = 0; i < currentStr.length(); i++) {
+            // Write the first string
+            BinaryStdOut.write(currentStr.charAt(i), 8);
+        }
+
+        int lookAheadCode = BinaryStdIn.readInt(8);
+
+        // Keep writing characters until the end of the file
+        while (lookAheadCode != EOF) {
+            // If code is already in the dictionary, get its value
+            if (lookAheadCode < code) {
+                currentString = map[lookAheadCode];
+            } else if (lookAheadCode == code) {
+                // Special case
+                currentString = currentStr + currentStr.charAt(0);
+            }
+
+            // Write out string
+            for (int i = 0; i < currentString.length(); i++) {
+                BinaryStdOut.write(currentString.charAt(i), 8);
+            }
+
+            // Build dictionary
+            if (code < 256) {
+                map[code++] = currentStr + currentString.charAt(0);
+            }
+
+            currentStr = currentString;
+            lookAheadCode = BinaryStdIn.readInt(8);
         }
 
         BinaryStdOut.close();
     }
 
-    private static void expand() {
-
-
-        BinaryStdOut.close();
-    }
 
     public static void main(String[] args) {
         if      (args[0].equals("-")) compress();
